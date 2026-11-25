@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مكتب مريم ميديا</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* VOICE  playful game: the founder peeks at his team like a pixel-art management sim
+   IDEA   floating isometric islands, one workshop per agent, the shared brain in the middle
+   PICTURE a pixel canvas: 8 islands joined by wooden bridges, characters at desks, live states
+   COLOUR sky blue, grass green, earth brown; each workshop has its own accent; glass UI panels
+   TYPE   Press Start 2P for island signs, Baloo Bhaijaan 2 for Arabic UI
+   LAYOUT glass top bar, the scene full width (scrolls sideways on phones), detail card + task board below */
+:root{color-scheme:light;--ink:#1d2433;--soft:#5b6478;--glass:rgba(255,255,255,.78);--edge:rgba(255,255,255,.95);--sh:0 6px 24px rgba(30,60,110,.18)}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:linear-gradient(#9fd3ff,#d9f0ff 60%,#eef8ff);color:var(--ink);font:16px/1.55 "Baloo Bhaijaan 2",Tahoma,sans-serif;overflow-x:clip;min-height:100vh}
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:14px max(3vw,16px) 6px}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;background:var(--glass);border:1.5px solid var(--edge);border-radius:18px;padding:6px 10px;box-shadow:var(--sh);backdrop-filter:blur(10px)}
+.brand{font-weight:800;font-size:clamp(20px,4vw,28px);line-height:1.1;padding-inline:6px;display:flex;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%;background:#2ec4a6;box-shadow:0 0 0 3px rgba(46,196,166,.25)}
+.tab{border-radius:12px;padding:2px 12px;font-weight:700;white-space:nowrap}
+.tab.on{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.n{display:inline-block;min-width:22px;text-align:center;border-radius:8px;padding:0 6px;margin-inline-start:4px;font-size:14px;color:#fff}
+.stage{direction:ltr;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;padding:0 0 6px}
+.world{position:relative;margin:0 auto;width:max(100%,720px);max-width:1240px}
+canvas{display:block;width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges}
+.sign{position:absolute;transform:translate(-50%,-100%);font:clamp(7px,.9vw,10px)/1 "Press Start 2P",monospace;color:#3b1d00;background:#ffb03a;border:2px solid #3b1d00;padding:5px 6px 4px;white-space:nowrap;box-shadow:0 3px 0 #3b1d00;cursor:pointer}
+
+.chip{position:absolute;transform:translate(-50%,0);direction:rtl;display:flex;align-items:center;gap:6px;background:var(--glass);border:1.5px solid var(--edge);border-radius:12px;padding:2px 10px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:var(--sh);cursor:pointer;backdrop-filter:blur(6px)}
+.chip i{width:9px;height:9px;border-radius:50%;flex:none}
+.below{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:16px;padding:8px max(3vw,16px) 28px;max-width:1240px;margin:0 auto}
+.card{background:var(--glass);border:1.5px solid var(--edge);border-radius:20px;padding:14px 16px;box-shadow:var(--sh);backdrop-filter:blur(10px)}
+.card h2{margin:0;font-size:26px;line-height:1.1}
+.card .fr{color:var(--soft);font-size:14px;direction:ltr;text-align:right}
+.st{display:inline-block;margin:8px 0;border-radius:10px;padding:1px 10px;font-weight:700;color:#fff}
+.ttl{direction:ltr;text-align:left;margin:4px 0 0;line-height:1.35}
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.col h3{margin:0 0 8px;font-size:18px;display:flex;justify-content:space-between;align-items:center}
+.col ol{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.col li{background:#fff;border-radius:12px;padding:6px 10px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.col li p{margin:0;direction:ltr;text-align:left;font-size:14px;line-height:1.35}
+.col li span{font-size:13px;color:var(--soft)}
+.muted{color:var(--soft);font-size:14px;margin:0}
+.hint{font-size:13px;color:var(--soft);margin:10px 0 0}
+.c-work{background:#2ec4a6}.c-wait{background:#ff5fa2}.c-todo{background:#f0a400}.c-idle{background:#8a93a6}
+@media(max-width:860px){.below{grid-template-columns:minmax(0,1fr)}.board{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.chip{font-size:12px;padding:1px 8px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar"><span class="brand"><span class="dot"></span>مريم ميديا</span><span class="tab on">المكتب</span><span class="tab">المهام<span class="n c-wait" id="nWait">0</span></span></div>
+  <div class="bar"><span class="tab" id="sumWork"></span><span class="tab" id="sumDone"></span></div>
+</header>
+<div class="stage" id="stage"><div class="world" id="world"><canvas id="cv" width="464" height="266" aria-label="مكتب pixel art فيه جزر الموظفين والمخ المشترك فالوسط"></canvas></div></div>
+<section class="below">
+  <article class="card" id="detail"></article>
+  <article class="card">
+    <div class="board" id="board"></div>
+    <p class="hint">المعلومات من <b>taches.json</b> ديال maryam-media، آخر تحديث <span id="upd"></span>. باش تحدّث المكتب قول لـ Claude: «حدّث المكتب».</p>
+  </article>
+</section>
+<script>
+{
+const DATA={"mis_a_jour": "2026-11-25", "taches": [{"id": 1, "titre": "Construire la structure de l'entreprise (cerveau + agents)", "agent": "chef", "statut": "termine", "date": "2026-11-24", "departement": "direction"}, {"id": 2, "titre": "Compléter les fiches des personnages (Maryam, Badr, Hind)", "agent": "chef", "statut": "a_faire", "date": "2026-11-24", "departement": "serie-maryam"}, {"id": 3, "titre": "Test 4 styles glycolyse — script unique (10-15 s)", "agent": "scenariste", "statut": "termine", "date": "2026-11-24", "departement": "nibras"}, {"id": 4, "titre": "Test 4 styles glycolyse — vérification scientifique du script", "agent": "verificateur", "statut": "termine", "date": "2026-11-24", "departement": "nibras"}, {"id": 5, "titre": "Test 4 styles glycolyse — 4 MP4 (colored-pencil, ipad-sketch, engraving, assembly-line)", "agent": "animateur", "statut": "termine", "date": "2026-11-24", "departement": "nibras"}, {"id": 6, "titre": "Test 4 styles glycolyse — vérification des 4 vidéos", "agent": "verificateur", "statut": "termine", "date": "2026-11-24", "departement": "nibras"}, {"id": 7, "titre": "Premier reel Nibras avec l'équipe complète → reel glycolyse (ids 4-8)", "agent": "scenariste", "statut": "annule", "date": "2026-11-24", "departement": "nibras"}, {"id": 8, "titre": "Reel glycolyse : extraire la source (Activité 3, cours FR)", "agent": "chef", "statut": "termine", "date": "2026-11-24", "departement": "nibras"}, {"id": 9, "titre": "Reel glycolyse : script 60-90 s, rythme lent", "agent": "scenariste", "statut": "termine", "date": "2026-11-24", "departement": "nibras"}, {"id": 10, "titre": "Reel glycolyse : vérification du script (termes, exactitude, rythme)", "agent": "verificateur", "statut": "termine", "date": "2026-11-24", "departement": "nibras"}, {"id": 11, "titre": "Reel glycolyse : prompts Google Vids (plans 9:16 + voix off)", "agent": "prompteur", "statut": "annule", "date": "2026-11-24", "departement": "nibras"}, {"id": 12, "titre": "Reel glycolyse : légende, hashtags, adaptation 4 plateformes", "agent": "planificateur", "statut": "annule", "date": "2026-11-24", "departement": "nibras"}, {"id": 13, "titre": "Nibras : fiche du personnage « Le Professeur Badreddine » (+ images)", "agent": "chef", "statut": "termine", "date": "2026-11-24", "departement": "nibras"}, {"id": 14, "titre": "Style « Planche naturaliste » : reel glycolyse ~30 s (suivi global)", "agent": "chef", "statut": "attend_validation", "date": "2026-11-25", "departement": "nibras"}, {"id": 15, "titre": "Reel glycolyse ~30 s (Planche naturaliste) : script", "agent": "scenariste", "statut": "termine", "date": "2026-11-25", "departement": "nibras"}, {"id": 16, "titre": "Reel glycolyse ~30 s : vérification du script", "agent": "verificateur", "statut": "termine", "date": "2026-11-25", "departement": "nibras"}, {"id": 17, "titre": "Reel glycolyse ~30 s : MP4 Planche naturaliste + recette du style", "agent": "animateur", "statut": "termine", "date": "2026-11-25", "departement": "nibras"}, {"id": 18, "titre": "Reel glycolyse ~30 s : vérification de la vidéo", "agent": "verificateur", "statut": "termine", "date": "2026-11-25", "departement": "nibras"}, {"id": 19, "titre": "Carrousel : la glycolyse, étape commune entre respiration et fermentation", "agent": "scenariste", "statut": "a_faire", "date": "2026-11-25", "departement": "nibras"}, {"id": 20, "titre": "Reel glycolyse Planche naturaliste : légende, hashtags, adaptation 4 plateformes", "agent": "planificateur", "statut": "a_faire", "date": "2026-11-25", "departement": "nibras"}]};
+const tasks=DATA.taches.filter(t=>t.statut!=="annule");
+const TEAM=[
+ {id:"chef",ar:"المدير",fr:"chef",sign:"DIRECTION",col:"#ffb03a",hair:"#2b1b10",skin:"#f1c08f",c:0,r:0},
+ {id:"chercheur",ar:"الباحث",fr:"chercheur",sign:"RECHERCHE",col:"#4f8cff",hair:"#111111",skin:"#d9a06c",c:1,r:0},
+ {id:"scenariste",ar:"كاتب السيناريو",fr:"scenariste",sign:"ÉCRITURE",col:"#ff7a59",hair:"#7a3b14",skin:"#f6cfa3",c:2,r:0},
+ {id:"prompteur",ar:"الـ prompteur",fr:"prompteur",sign:"PROMPTS",col:"#b07cff",hair:"#e8c15a",skin:"#f1c08f",c:2,r:1},
+ {id:"planificateur",ar:"المخطط",fr:"planificateur",sign:"PLANNING",col:"#ffd23f",hair:"#3a2416",skin:"#c88b5a",c:2,r:2},
+ {id:"verificateur",ar:"المراجع",fr:"verificateur",sign:"CONTRÔLE",col:"#2ec4a6",hair:"#151515",skin:"#e7b384",c:1,r:2},
+ {id:"animateur",ar:"الأنيماتور",fr:"animateur",sign:"ANIMATION",col:"#ff5fa2",hair:"#5a2d82",skin:"#f6cfa3",c:0,r:2},
+ {id:"cafe",ar:"استراحة",fr:"pause café",sign:"CAFÉ",col:"#9b6a3c",c:0,r:1},
+ {id:"nibras",ar:"ستوديو Nibras",fr:"département Nibras · @nibrassvt",sign:"STUDIO NIBRAS",col:"#e0b341",c:3,r:1,dept:"nibras"},
+ {id:"maryam",ar:"سلسلة مريم",fr:"département Série Maryam",sign:"SÉRIE MARYAM",col:"#1f8a70",c:1,r:3,dept:"serie-maryam"},
+ {id:"cerveau",ar:"المخ المشترك",fr:"cerveau",sign:"CERVEAU",col:"#c77dff",c:1,r:1}
+];
+const RANK={en_cours:0,attend_validation:1,a_faire:2,termine:3};
+const ST={en_cours:["خدام دابا","c-work","#2ec4a6"],attend_validation:["كيتسنى موافقتك","c-wait","#ff5fa2"],a_faire:["عندو مهمة","c-todo","#f0a400"],idle:["مرتاح","c-idle","#8a93a6"]};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const cur=id=>tasks.filter(t=>t.agent===id&&t.statut!=="termine").sort((a,b)=>RANK[a.statut]-RANK[b.statut]||b.id-a.id)[0]||null;
+const state=id=>{const t=cur(id);return t?t.statut:"idle"};
+
+const W=464,H=266,N=6,GAP=9,OX=232,OY=40,DEPTH=18;
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+const iso=(x,y,z=0)=>[OX+(x-y)*8,OY+(x+y)*4-z];
+const hsh=(x,y)=>{let h=(x|0)*374761393+(y|0)*668265263;h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)%100};
+const shade=(hex,f)=>{const n=parseInt(hex.slice(1),16);let r=n>>16,g=n>>8&255,b=n&255;const m=v=>Math.max(0,Math.min(255,Math.round(f>0?v+(255-v)*f:v*(1+f))));return "rgb("+m(r)+","+m(g)+","+m(b)+")"};
+
+/* ---------- static layer (drawn once) ---------- */
+const bg=document.createElement("canvas");bg.width=W;bg.height=H;const b=bg.getContext("2d");
+const P=(c,x,y,w=1,h=1,g=b)=>{g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),w,h)};
+function fillGrid(x0,y0,x1,y1,z,fn){
+  for(let u=x0;u<x1;u+=1/16)for(let v=y0;v<y1;v+=1/16){const[sx,sy]=iso(u,v,z);P(fn(u,v,sx,sy),sx,sy)}
+}
+function island(gx,gy,kind,col){
+  const x1=gx+N,y1=gy+N;
+  // earth sides
+  for(let u=gx;u<=x1;u+=1/16){const[sx,sy]=iso(u,y1);for(let d=0;d<DEPTH;d++){const k=hsh(sx,d);P(d<2?"#3f9a46":(d%5===0&&k<60)?"#6e4628":k<8?"#b98552":"#9b6a3c",sx,sy+d)}}
+  for(let v=gy;v<=y1;v+=1/16){const[sx,sy]=iso(x1,v);for(let d=0;d<DEPTH;d++){const k=hsh(sx,d+7);P(d<2?"#2f8a3c":(d%5===0&&k<60)?"#4f321c":k<8?"#8f6138":"#7a5030",sx,sy+d)}}
+  // hanging roots and vines
+  for(let i=0;i<10;i++){const t=hsh(gx*13+i,gy)/100;const onLeft=i%2===0;const[sx,sy]=onLeft?iso(gx+t*N,y1):iso(x1,gy+t*N);const len=3+hsh(i,gx+gy)%9;for(let d=0;d<len;d++)P(i%3===0?"#4f8f3a":"#5e3c22",sx,sy+DEPTH+d)}
+  // grass top
+  fillGrid(gx,gy,x1,y1,0,(u,v,sx,sy)=>{const k=hsh(sx,sy);return k<12?"#7fd16b":k<20?"#4aa851":"#5cb85c"});
+  if(kind==="room")room(gx,gy,col);
+}
+function room(gx,gy,col,opt={}){
+  const a=gx+1,c=gy+1,e=gx+N-1,f=gy+N-1,WH=15;
+  fillGrid(a,c,e,f,0,opt.floor||((u,v)=>((Math.floor(u*2)+Math.floor(v*2))%2?shade(col,.72):shade(col,.82))));
+  // back walls (glass with coloured rim)
+  const wall=(p,q,horiz)=>{const n=Math.round((horiz?(e-a):(f-c))*16);for(let i=0;i<=n;i++){const t=i/16;const[sx,sy]=horiz?iso(a+t,c):iso(a,c+t);for(let h=0;h<WH;h++){let clr=opt.wall?opt.wall(i,h,sx):(h>WH-3?col:(h<2?"#8fb3c9":(i%16===0?"#ffffff":(h%6===0?"#dcefff":"#c4e2f5"))));if(!opt.wall&&h>=3&&h<WH-3&&hsh(sx,h)<3)clr="#eaf7ff";P(clr,sx,sy-h)}P(shade(col,-.35),sx,sy-WH)}};
+  wall(0,0,false);wall(0,0,true);
+  if(opt.deco){opt.deco(a,c,e,f);}else{
+  // shelf and plant on back wall
+  const[px,py]=iso(a+.6,c+.6);P("#7a5030",px-3,py-10,7,2);P("#2f8a3c",px-2,py-14,5,4);P("#5cb85c",px-1,py-16,3,3);
+  const[qx,qy]=iso(e-1,c+.4);P(shade(col,-.2),qx-3,qy-11,6,8);P("#ffffff",qx-2,qy-10,4,1);P("#ffffff",qx-2,qy-8,4,1);P("#ffffff",qx-2,qy-6,3,1);}
+  // low front walls
+  for(let i=0;i<=(e-a)*16;i++){const[sx,sy]=iso(a+i/16,f);P("#ffffff",sx,sy-3,1,3);P(shade(col,-.3),sx,sy-4)}
+  for(let i=0;i<=(f-c)*16;i++){const[sx,sy]=iso(e,c+i/16);P("#e6f3fb",sx,sy-3,1,3);P(shade(col,-.3),sx,sy-4)}
+}
+function house(gx,gy){
+  room(gx,gy,"#1f8a70",{
+    floor:(u,v)=>{const i=Math.floor(u*3),j=Math.floor(v*3),k=(i+j)%3;return k===0?"#1f8a70":k===1?"#f4efe6":"#2f6fb3"},
+    wall:(i,h,sx)=>h>12?"#1f8a70":h<2?"#c9b79c":"#fbf6ee",
+    deco:(a,c,e,f)=>{
+      // keyhole arch window on the left wall
+      const[wx,wy]=iso(a,c+2);P("#2f6fb3",wx-2,wy-11,5,7);P("#2f6fb3",wx-1,wy-13,3,2);P("#9fd3ff",wx-1,wy-10,3,5);
+      // red banquette along the right wall with cushions
+      for(let i=0;i<=(e-a-.5)*16;i++){const[sx,sy]=iso(a+.25+i/16,c+.45);P("#b3261e",sx,sy-4,1,4);P("#d9473d",sx,sy-5)}
+      [1,2.2,3.4].forEach(t=>{const[sx,sy]=iso(a+t,c+.4);P("#f2c14e",sx-2,sy-8,4,3)});
+      // brass tea table with teapot
+      const[tx,ty]=iso(a+2.6,c+2.4);P("#c9952b",tx-5,ty-3,10,2);P("#a8741f",tx-1,ty-1,2,3);P("#e8e8e8",tx-2,ty-7,4,4);P("#c0c0c0",tx+2,ty-6,2,1);P("#7fd16b",tx-1,ty-8,2,1);
+    }
+  });
+}
+function studio(gx,gy){
+  room(gx,gy,"#e0b341",{
+    floor:(u,v)=>{const k=Math.floor(u*4);return (u*4-k)<.12?"#5e3c22":(k%2?"#8a5a34":"#9c683e")},
+    wall:(i,h)=>h>12?"#e0b341":h<2?"#1d1830":"#2b2440",
+    deco:(a,c,e,f)=>{
+      // projection frame on the right wall
+      const[sx,sy]=iso(a+1.2,c);for(let i=0;i<34;i++){for(let h=0;h<9;h++)P(h===0||h===8||i===0||i===33?"#e0b341":"#f3e3c3",sx+i,sy-12+h+Math.round(i/2))}
+      // fanous lantern on the left wall
+      const[lx,ly]=iso(a,c+1.6);P("#e0b341",lx-1,ly-15,3,1);P("#c98b2b",lx-2,ly-14,5,6);P("#ffe27a",lx-1,ly-13,3,4);P("#e0b341",lx,ly-8,1,2);
+    }
+  });
+}
+function bridge(x0,y0,x1,y1){
+  fillGrid(x0,y0,x1,y1,0,(u,v)=>{const along=(x1-x0)>(y1-y0)?u:v;const k=Math.floor(along*4);return (along*4-k)<.18?"#5e3c22":(k%2?"#c08a52":"#a8743f")});
+  const long=(x1-x0)>(y1-y0);
+  for(let s=0;s<=2;s++){const t=s/2;const p1=long?iso(x0+t*(x1-x0),y0):iso(x0,y0+t*(y1-y0));const p2=long?iso(x0+t*(x1-x0),y1):iso(x1,y0+t*(y1-y0));P("#5e3c22",p1[0],p1[1]-5,1,5);P("#5e3c22",p2[0],p2[1]-5,1,5)}
+  for(let i=0;i<=(long?(x1-x0):(y1-y0))*16;i++){const t=i/16;const p1=long?iso(x0+t,y0):iso(x0,y0+t);const p2=long?iso(x0+t,y1):iso(x1,y0+t);P("#d9c29a",p1[0],p1[1]-4);P("#d9c29a",p2[0],p2[1]-4)}
+}
+function tree(x,y,s=1){const[sx,sy]=iso(x,y);P("#5e3c22",sx-1,sy-6,3,6);const blob=(cx,cy,r,c)=>{for(let dy=-r;dy<=r;dy++){const hw=Math.round(Math.sqrt(r*r-dy*dy));P(c,cx-hw,cy+dy,hw*2+1,1)}};const r=Math.round(6*s);blob(sx,sy-10-r,r+1,"#24602c");blob(sx,sy-10-r,r,"#3f9a46");blob(sx-2,sy-12-r,Math.max(2,r-3),"#62c25a");P("#8fe07a",sx-3,sy-14-r,2,1)}
+function plaza(gx,gy){
+  const[cx,cy]=iso(gx+N/2,gy+N/2);
+  fillGrid(gx+.5,gy+.5,gx+N-.5,gy+N-.5,0,(u,v,sx,sy)=>{const dx=(sx-cx)/2,dy=sy-cy;const d=Math.sqrt(dx*dx*4+dy*dy*4);if(d>22&&d<25)return "#f39ad6";if(d>15&&d<17)return "#d68be8";return hsh(sx,sy)<10?"#e8d9bf":"#f4e8d3"});
+  const ring=(rx,ry,y,c)=>{for(let dy=-ry;dy<=ry;dy++){const hw=Math.round(rx*Math.sqrt(1-(dy/ry)**2));P(c,cx-hw,y+dy,hw*2+1,1)}};
+  ring(15,7,cy,"#3d2f78");ring(13,6,cy-2,"#5b47b8");P("#4b3a9a",cx-6,cy-12,13,10);ring(12,5,cy-12,"#7a64e0");
+  // lamp and bench
+  const[lx,ly]=iso(gx+1.2,gy+N-1.4);P("#2b2b3a",lx,ly-16,1,16);P("#ffe27a",lx-1,ly-19,3,3);
+  const[bx,by]=iso(gx+N-1.4,gy+1.5);P("#7a5030",bx-5,by-3,10,2);P("#5e3c22",bx-4,by-1,1,2);P("#5e3c22",bx+3,by-1,1,2);
+}
+function cafe(gx,gy){
+  const[cx,cy]=iso(gx+N/2,gy+N/2);
+  P("#7a5030",cx-10,cy-12,20,12);P("#a8743f",cx-10,cy-14,20,3);
+  for(let i=0;i<10;i++)P(i%2?"#ffffff":"#ff5fa2",cx-12+i*2.4,cy-22,3,5);P("#5e3c22",cx-11,cy-17,1,4);P("#5e3c22",cx+10,cy-17,1,4);
+  P("#ffffff",cx-6,cy-17,3,3);P("#ffffff",cx+2,cy-17,3,3);P("#6e4628",cx-5,cy-16,1,1);P("#6e4628",cx+3,cy-16,1,1);
+  [[gx+1.3,gy+2],[gx+2,gy+N-1.2]].forEach(([u,v])=>{const[sx,sy]=iso(u,v);P("#ff7a59",sx-3,sy-5,6,2);P("#5e3c22",sx,sy-3,1,3)});
+}
+function drawStatic(){
+  b.clearRect(0,0,W,H);
+  const order=TEAM.slice().sort((p,q)=>(p.c+p.r)-(q.c+q.r)||p.c-q.c);
+  order.forEach(m=>{
+    const gx=m.c*GAP,gy=m.r*GAP;
+    const open=m.id==="cafe"||m.id==="cerveau"||m.dept;
+    island(gx,gy,open?"open":"room",m.col);
+    if(m.id==="cerveau")plaza(gx,gy);
+    if(m.id==="cafe")cafe(gx,gy);
+    if(m.id==="maryam")house(gx,gy);
+    if(m.id==="nibras")studio(gx,gy);
+    if(TEAM.some(o=>o.c===m.c+1&&o.r===m.r))bridge(gx+N,gy+2,gx+GAP,gy+4);
+    if(TEAM.some(o=>o.r===m.r+1&&o.c===m.c))bridge(gx+2,gy+N,gx+4,gy+GAP);
+    tree(gx+.6,gy+N-.6,.8);tree(gx+N-.6,gy+.6,.9);
+    if(m.id==="cafe")tree(gx+N-.7,gy+N-.8,.7);
+  });
+}
+
+/* ---------- animated layer ---------- */
+const clouds=Array.from({length:6},(_,i)=>({x:(i*97)%W,y:12+(i*53)%150,w:18+(i*13)%22,s:.06+(i%3)*.03}));
+const SPR=["..HHHH..",".HHHHHH.",".HSSSSH.",".SESSES.",".SSSSSS.","..SSSS..",".TTTTTT.","TTTTTTTT","STTTTTTS",".TTTTTT.",".LL..LL.",".LL..LL."];
+function person(x,y,m,st,f){
+  const bob=(st==="en_cours"&&f%2)?-1:0;
+  SPR.forEach((row,j)=>{for(let i=0;i<8;i++){const k=row[i];if(k===".")continue;let c={H:m.hair,S:m.skin,T:m.col,L:"#3a3f55",E:"#1d1d1d"}[k];if(k==="E"&&st==="idle")c=m.skin;P(c,x+i,y+j+(j<6?bob:0),1,1,ctx)}});
+  if(st==="idle"){P("#1d1d1d",x+1,y+4,2,1,ctx);P("#1d1d1d",x+5,y+4,2,1,ctx)}
+}
+function desk(x,y,m,st,f){
+  P("#c08a52",x-3,y,14,3,ctx);P("#8f6138",x-3,y+3,14,5,ctx);P("#5e3c22",x-3,y+3,14,1,ctx);
+  P("#3a3f55",x+6,y-6,7,6,ctx);P(m.col,x+9,y-4,1,1,ctx);P("#3a3f55",x+8,y,3,1,ctx);
+  if(st==="en_cours"){const g=f%3===0?"#bff7ff":"#8ef0ff";P(g,x+5,y-7,9,1,ctx);P(g,x+13,y-6,1,6,ctx)}
+}
+function bubble(x,y,kind,f){
+  const dy=f%4<2?0:-1;
+  if(kind==="attend_validation"){P("#ffffff",x,y+dy,9,8,ctx);P("#ffffff",x+1,y+8+dy,2,2,ctx);P("#ff5fa2",x+4,y+1+dy,1,4,ctx);P("#ff5fa2",x+4,y+6+dy,1,1,ctx);P("#1d2433",x,y-1+dy,9,1,ctx);P("#1d2433",x,y+8+dy,9,1,ctx);P("#1d2433",x-1,y+dy,1,8,ctx);P("#1d2433",x+9,y+dy,1,8,ctx)}
+  if(kind==="a_faire"){P("#ffffff",x,y+dy,9,6,ctx);P("#1d2433",x,y-1+dy,9,1,ctx);P("#1d2433",x,y+6+dy,9,1,ctx);P("#1d2433",x-1,y+dy,1,6,ctx);P("#1d2433",x+9,y+dy,1,6,ctx);[1,4,7].forEach((o,i)=>P(i<=f%3?"#f0a400":"#e2e2e2",x+o,y+3+dy,1,1,ctx))}
+  if(kind==="idle"){const t=f%12;[[0,0],[3,-4],[6,-8]].forEach(([ox,oy],i)=>{if(t>=i*3){const zx=x+ox+(t-i*3)*.3,zy=y+oy-(t-i*3)*.6;P("#1d2433",zx,zy,3,1,ctx);P("#1d2433",zx+1,zy+1,1,1,ctx);P("#1d2433",zx,zy+2,3,1,ctx)}})}
+}
+function brain(f){
+  const m=TEAM.find(t=>t.id==="cerveau");const[cx,cy]=iso(m.c*GAP+N/2,m.r*GAP+N/2);
+  const yy=cy-26+(f%8<4?0:-1);const R=10;
+  const g=(f%10)/10;ctx.globalAlpha=.25+.2*Math.sin(g*Math.PI*2);
+  for(let dy=-R-4;dy<=R+4;dy++){const hw=Math.round(Math.sqrt(Math.max(0,(R+4)**2-dy*dy)));P("#ffb3e6",cx-hw,yy+dy,hw*2+1,1,ctx)}
+  ctx.globalAlpha=1;
+  for(let dy=-R;dy<=R;dy++){const hw=Math.round(Math.sqrt(R*R-dy*dy));P(dy<-3?"#ffc2ec":"#ff9ed8",cx-hw,yy+dy,hw*2+1,1,ctx)}
+  [[-6,-4,5],[1,-6,4],[-3,1,6],[3,3,4],[-7,4,3]].forEach(([ox,oy,w])=>P("#e070b8",cx+ox,yy+oy,w,1,ctx));
+  P("#e070b8",cx,yy-R+1,1,R*2-2,ctx);P("#ffffff",cx-6,yy-7,3,2,ctx);
+  for(let i=0;i<3;i++){const a=(f*.35+i*2.1),px=cx+Math.cos(a)*16,py=yy+Math.sin(a)*7;P("#fff4fb",px,py,2,2,ctx)}
+}
+function baby(x,y,f){
+  const k=f%4<2;P("#f6cfa3",x,y,4,4,ctx);P("#3a2416",x,y,4,1,ctx);P("#1d1d1d",x+1,y+2,1,1,ctx);
+  P("#ff9ed8",x+3,y+2,6,4,ctx);P("#f6cfa3",x+(k?3:4),y+6,1,1,ctx);P("#f6cfa3",x+(k?7:8),y+6,1,1,ctx);P("#ffffff",x+5,y+3,2,1,ctx);
+}
+function departments(f){
+  const M=TEAM.find(t=>t.id==="maryam");const[mx,my]=iso(M.c*GAP+N/2,M.r*GAP+N/2);
+  person(mx-14,my-16,{hair:"#2b1b10",skin:"#e7b384",col:"#2f6fb3"},"present",f);
+  person(mx+5,my-17,{hair:"#4a2a1a",skin:"#f1c08f",col:"#1f8a70"},"present",f);
+  P("#b3261e",mx-15,my-5,10,2,ctx);P("#b3261e",mx+4,my-5,10,2,ctx);
+  const path=(f%40)/40,px=path<.5?path*2:2-path*2;baby(mx-10+Math.round(px*18),my+3,f);
+  const Nb=TEAM.find(t=>t.id==="nibras");const[nx,ny]=iso(Nb.c*GAP+N/2,Nb.r*GAP+N/2);
+  person(nx-2,ny-12,{hair:"#1d1d1d",skin:"#e7b384",col:"#ffffff"},"present",f);P("#1d1d1d",nx+5,ny-6,4,1,ctx);
+  // glycolysis on the screen: one 6C bead splits into two 3C beads
+  const[sx,sy]=iso(Nb.c*GAP+1+1.2,Nb.r*GAP+1);const t=(f%24)/24,x0=sx+8,y0=sy-6;
+  if(t<.45){P("#4f8cff",x0+4,y0+2,7,3,ctx)}else{const d=Math.round((t-.45)*14);P("#ff7a59",x0+2-d/2,y0+1+d/4,4,3,ctx);P("#ff7a59",x0+10+d/2,y0+5+d/4,4,3,ctx);if(t>.75){P("#e0b341",x0+7,y0+9,2,2,ctx)}}
+}
+function frame(f){
+  ctx.clearRect(0,0,W,H);
+  const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,"#8fd0ff");sky.addColorStop(1,"#d8f1ff");ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+  clouds.forEach(c=>{const x=((c.x+f*c.s*6)%(W+40))-40;P("#ffffff",x,c.y,c.w,4,ctx);P("#ffffff",x+4,c.y-3,c.w-8,3,ctx);P("#eef8ff",x,c.y+4,c.w,1,ctx)});
+  ctx.drawImage(bg,0,0);
+  brain(f);
+  departments(f);
+  TEAM.forEach(m=>{if(m.id==="cafe"||m.id==="cerveau"||m.dept)return;const st=state(m.id);const[cx,cy]=iso(m.c*GAP+N/2,m.r*GAP+N/2);person(cx-4,cy-14,m,st,f);desk(cx-5,cy-3,m,st,f);if(st!=="en_cours")bubble(cx+3,cy-28,st,f)});
+}
+
+/* ---------- HTML overlay, cards and board ---------- */
+const world=document.getElementById("world");
+TEAM.forEach(m=>{
+  const gx=m.c*GAP,gy=m.r*GAP;const[sx,sy]=iso(gx,gy);
+  const center=m.id==="cerveau";const[ax,ay]=center?iso(gx+N/2,gy+N/2):[sx,sy];
+  const s=document.createElement("button");s.type="button";s.className="sign";s.textContent=m.sign;s.style.left=(ax/W*100)+"%";s.style.top=((center?ay-40:sy-20)/H*100)+"%";s.onclick=()=>show(m.id);world.appendChild(s);
+  if(m.id==="cafe"||center)return;
+  if(m.dept){const open=tasks.filter(t=>t.departement===m.dept&&t.statut!=="termine").length;const ch=document.createElement("button");ch.type="button";ch.className="chip";ch.innerHTML=`<i style="background:${m.col}"></i>${esc(m.ar)} · ${open?open+" فالطريق":"هادئ"}`;ch.style.left=(sx/W*100)+"%";ch.style.top=((sy-18)/H*100)+"%";ch.onclick=()=>show(m.id);world.appendChild(ch);return}
+  const st=state(m.id);
+  const ch=document.createElement("button");ch.type="button";ch.className="chip";ch.innerHTML=`<i style="background:${ST[st][2]}"></i>${esc(m.ar)} · ${ST[st][0]}`;ch.style.left=(sx/W*100)+"%";ch.style.top=((sy-18)/H*100)+"%";ch.onclick=()=>show(m.id);world.appendChild(ch);
+});
+const nameOf=id=>(TEAM.find(m=>m.id===id)||{ar:id}).ar;
+function show(id){
+  const m=TEAM.find(t=>t.id===id);const el=document.getElementById("detail");
+  if(id==="cerveau"){el.innerHTML=`<h2>${esc(m.ar)}</h2><p class="fr">cerveau/</p><p>هنا كاين كلشي اللي كيقراه الفريق قبل ما يخدم: قواعد الشركة، charte ديال Nibras، الستايل « Planche naturaliste »، الأستاذ بدر الدين، وسلسلة مريم.</p>`;return}
+  if(m.dept){const list=tasks.filter(t=>t.departement===m.dept).sort((a,b)=>RANK[a.statut]-RANK[b.statut]||b.id-a.id);const intro=m.id==="maryam"?"عائلة مغربية بلا كلام: بدر، هند، والصغيرة مريم (8 شهور) اللي بدات كتحبا. 3D cartoon، جوج حلقات فالسيمانة.":"دروس SVT بالفرنسية لـ 2BAC PC، بالستايل « Planche naturaliste » والأستاذ بدر الدين.";el.innerHTML=`<h2>${esc(m.ar)}</h2><p class="fr">${esc(m.fr)}</p><p>${intro}</p>`+(list.length?`<ol style="margin:4px 0 0;padding-inline-start:18px">${list.slice(0,5).map(t=>`<li class="ttl">${esc(t.titre)} <span class="muted">(${t.statut==="termine"?"سالات":ST[t.statut][0]})</span></li>`).join("")}</ol>`:"");return}
+  if(id==="cafe"){el.innerHTML=`<h2>${esc(m.ar)}</h2><p class="fr">pause café</p><p>هنا كيمشيو الموظفين ملي كيساليو المهام ديالهم.</p>`;return}
+  const st=state(id),mine=tasks.filter(t=>t.agent===id).sort((a,b)=>RANK[a.statut]-RANK[b.statut]||b.id-a.id);
+  el.innerHTML=`<h2>${esc(m.ar)}</h2><p class="fr">${esc(m.fr)}</p><span class="st ${ST[st][1]}">${ST[st][0]}</span>`+(mine.length?`<ol style="margin:4px 0 0;padding-inline-start:18px">${mine.slice(0,4).map(t=>`<li class="ttl">${esc(t.titre)} <span class="muted">(${t.statut==="termine"?"سالات":ST[t.statut][0]})</span></li>`).join("")}</ol>`:`<p class="muted">ما عندو حتى مهمة دابا.</p>`);
+}
+const cols=[["attend_validation","كيتسناو موافقتك","c-wait"],["todo","فالطريق","c-todo"],["termine","سالاو","c-idle"]];
+document.getElementById("board").innerHTML=cols.map(([k,t,c])=>{const list=tasks.filter(x=>k==="todo"?(x.statut==="a_faire"||x.statut==="en_cours"):x.statut===k).sort((a,b)=>b.id-a.id);return `<div class="col"><h3>${t}<span class="n ${c}">${list.length}</span></h3>${list.length?`<ol>${list.map(x=>`<li><p>${esc(x.titre)}</p><span>${esc(nameOf(x.agent))} · ${esc(x.date)}</span></li>`).join("")}</ol>`:`<p class="muted">حتى حاجة دابا.</p>`}</div>`}).join("");
+const cnt=k=>tasks.filter(t=>t.statut===k).length;
+document.getElementById("nWait").textContent=cnt("attend_validation");
+document.getElementById("sumWork").textContent=(cnt("en_cours")+cnt("a_faire"))+" فالطريق";
+document.getElementById("sumDone").textContent=cnt("termine")+" سالاو";
+document.getElementById("upd").textContent=DATA.mis_a_jour;
+const first=TEAM.find(m=>m.id!=="cafe"&&m.id!=="cerveau"&&state(m.id)==="attend_validation")||TEAM.find(m=>state(m.id)==="a_faire")||TEAM[0];
+show(first.id);
+
+drawStatic();
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let f=0;frame(0);
+if(!reduce){const tick=()=>{f++;frame(f)};const timer=setInterval(tick,140)}
+const stage=document.getElementById("stage");stage.scrollLeft=(stage.scrollWidth-stage.clientWidth)/2;
+}
+</script>
+</body>
+</html>
